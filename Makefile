@@ -1,6 +1,6 @@
 CC = gcc
 
-OBJ = makedir.o
+OBJ = makedir.o info.o
 OUT = makedir
 
 $(OUT): $(OBJ)
