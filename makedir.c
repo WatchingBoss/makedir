@@ -69,7 +69,19 @@ int create_dir(char *source_dir, char *name_dir, bool verbose)
 
 	exit(EXIT_SUCCESS);
 }
+/*
+  Permissions for mkdir()
+ 
+  User: S_IRUSR (read), S_IWUSR (write), S_IXUSR (execute)
+  Group: S_IRGRP (read), S_IWGRP (write), S_IXGRP (execute)
+  Others: S_IROTH (read), S_IWOTH (write), S_IXOTH (execute)
 
+  Additionally, some shortcuts are provided (basically a bitwise-OR combination of the above
+
+  Read + Write + Execute: S_IRWXU (User), S_IRWXG (Group), S_IRWXO (Others)
+  DEFFILEMODE: Equivalent of 0666 = rw-rw-rw-
+  ACCESSPERMS: Equivalent of 0777 = rwxrwxrwx 
+*/
 void my_error(char *e)
 {
 	perror(e);
