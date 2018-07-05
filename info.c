@@ -5,7 +5,7 @@ void print_help()
 	printf("Usage: 1) makedir [OPTION]... [DIR]... FILE - create file in DIR or current directory\n"
 		   "Create the DIR(s), if it/they do(es) not already exist\n");
 	printf("\n");
-	printf("  -p (not provided)        make parent directory as needed\n"
+	printf("  -p         make parent directory(ies)\n"
 		   "  -v         print a message for each created directory\n"
 		   "  --help     display this help and exit\n"
 		   "  --version  output version info and exit\n");
