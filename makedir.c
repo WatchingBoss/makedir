@@ -4,41 +4,11 @@
 
 #include "include/inc.h"
 
-int check_if_existing_path(char *string)
-{
-	DIR *dirName = opendir(string);
-	if(dirName)
-	{
-		closedir(dirName);
-		return(1);
-	}
-
-	return(0);
-}
-
-void call_creation(int argc, char *argv[], bool verbose, bool parents)
-{
-	/*
-	 * Only one dir in current dir
-	 * Only one dir in explicitly directed dir
-	 * Many dirs in current dir
-	 * Many dirs in explicitly directed dir
-	 * With options or not
-	 */
-
-	for(int i = argc - 1; i != 0; --i)
-	{
-		if(check_if_existing_path(argv[i]))
-			; // existing directory
-		else
-			; // creating directory
-	}
-}
+bool verbose = false, parents = false;
 
 int main(int argc, char *argv[])
 {
 	char c;
-	bool verbose = false, parents = false;
 
 	if(argc == 2 && (!strcmp(argv[1], "-help") || !strcmp(argv[1], "--help")) )
 		print_help();
@@ -56,26 +26,58 @@ int main(int argc, char *argv[])
 				parents = true;
 				break;
 			case '?':
-				my_error("Wrong argument, error");
+				system_error("Wrong argument, error");
 				break;
 			default:
 				break;
 		}
 	}
 
-	call_creation(argc, argv, verbose, parents);
-/*
-	if(argc > 2
-	   && strcmp(argv[argc - 2], "-v")
-	   && strcmp(argv[argc - 2], "-p"))
-		create_dir(argv[argc - 2], argv[argc - 1], verbose, parents);
-	else
-		create_dir("pwd", argv[argc - 1], verbose, parents);
-*/
+	call_creation(argc, argv);
+
 	exit(EXIT_SUCCESS);
 }
 
-void parent_dirs(char *source_dir, char *names, bool verbose, bool parents)
+void call_creation(int argc, char *argv[])
+{
+	if(check_if_existing_path(argv[argc - 1]))
+		user_error("You do not want create %s", argv[argc - 1]);
+
+	for(int i = argc - 1; i != 0; --i)
+	{
+		if(!strcmp(argv[i], "-p") || !strcmp(argv[i], "-v"))
+			break;
+
+		if(check_if_existing_path(argv[i]))
+			continue;
+		else
+		{
+			if(check_if_slash(argv[i]))
+			{
+				if(parents == true)
+				{
+					if(check_if_existing_path(argv[i - 1]))
+						create_parent_dir(argv[i - 1], argv[i]);
+					else
+						create_parent_dir("pwd", argv[i]);
+				}
+				else
+					user_error("You did not specify '-p' option to create %s", argv[i]);
+			}
+			else
+			{
+				if(check_if_existing_path(argv[i - 1]))
+					create_dir(argv[i - 1], argv[i]);
+				else
+					create_dir("pwd", argv[i]);
+			}
+		}
+	}
+
+	exit(EXIT_SUCCESS);
+}
+
+void create_parent_dir(const char *source_dir, const char *names)
 {
 	int words_count = 0;
 	char dir_names[10][50], directory[DIR_NAME];
@@ -99,29 +101,27 @@ void parent_dirs(char *source_dir, char *names, bool verbose, bool parents)
 	if(!strcmp(source_dir, "pwd"))
 	{
 		if(!getcwd(directory, sizeof(directory)))
-			my_error("getcwd error");
+			system_error("getcwd error");
 	}
 	else
 		strncpy(directory, source_dir, sizeof(directory));
 
 	for(int i = 0; i <= words_count; ++i)
 	{
-		create_dir(directory, dir_names[i], verbose, parents);
+		create_dir(directory, dir_names[i]);
 		strncat(directory, "/", sizeof(directory) - strlen(directory));
 		strncat(directory, dir_names[i], sizeof(directory) - strlen(directory));
 	}
-
-	exit(EXIT_SUCCESS);
 }
 
-void create_dir(char *source_dir, char *name_dir, bool verbose, bool parents)
+void create_dir(const char *source_dir, const char *name_dir)
 {
 	char directory[DIR_NAME], total_path[DIR_NAME];
 
 	if(!strcmp(source_dir, "pwd"))
 	{
 		if(!getcwd(directory, sizeof(directory)))
-			my_error("getcwd error");
+			system_error("getcwd error");
 	}
 	else
 		strncpy(directory, source_dir, sizeof(directory));
@@ -132,15 +132,12 @@ void create_dir(char *source_dir, char *name_dir, bool verbose, bool parents)
 	strncat(total_path, directory, sizeof(total_path));
 
 	if( (mkdir(total_path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) < 0)
-		my_error("mkdir error");
+		system_error("mkdir error");
 
 	if(verbose && strcmp(source_dir, "pwd"))
 		printf("makedir: created directory \"%s\" in \"%s\"\n", name_dir, source_dir);
 	else if(verbose)
 		printf("makedir: created directory \"%s\"\n", name_dir);
-
-	if(!parents)
-		exit(EXIT_SUCCESS);
 }
 
 /*
@@ -156,7 +153,37 @@ void create_dir(char *source_dir, char *name_dir, bool verbose, bool parents)
   DEFFILEMODE: Equivalent of 0666 = rw-rw-rw-
   ACCESSPERMS: Equivalent of 0777 = rwxrwxrwx 
 */
-void my_error(char *e)
+
+int check_if_slash(const char *string)
+{
+	for(int l = 0, i = string[l]; i != '\0'; i = string[++l])
+		if(i == '/')
+			return(1);
+	return(0);
+}
+
+int check_if_existing_path(const char *string)
+{
+	DIR *dirName = opendir(string);
+	if(dirName)
+	{
+		closedir(dirName);
+		return(1);
+	}
+	return(0);
+}
+
+void user_error(const char *e, ...)
+{
+	va_list args;
+	va_start(args, e);
+	vprintf(e, args);
+	va_end(args);
+	printf("\n");
+	exit(EXIT_FAILURE);
+}
+
+void system_error(const char *e)
 {
 	perror(e);
 	exit(EXIT_FAILURE);

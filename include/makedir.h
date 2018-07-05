@@ -5,8 +5,15 @@
 
 typedef enum{false, true} bool;
 
-extern void my_error(char *);
-extern void create_dir(char *, char *, bool, bool);
-extern void parent_dirs(char *, char *, bool, bool);
+extern int check_if_slash(const char *string);
+extern int check_if_existing_path(const char *string);
+
+extern void call_creation(int argc, char *argv[]);
+
+extern void create_dir(const char *, const char *);
+extern void create_parent_dir(const char *, const char *);
+
+extern void user_error(const char *, ...);
+extern void system_error(const char *);
 
 #endif
