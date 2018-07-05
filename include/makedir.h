@@ -6,7 +6,7 @@
 typedef enum{false, true} bool;
 
 extern void my_error(char *);
-extern int create_dir(char *, char *, bool, bool);
+extern void create_dir(char *, char *, bool, bool);
 extern void parent_dirs(char *, char *, bool, bool);
 
 #endif

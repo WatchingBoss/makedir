@@ -4,6 +4,37 @@
 
 #include "include/inc.h"
 
+int check_if_existing_path(char *string)
+{
+	DIR *dirName = opendir(string);
+	if(dirName)
+	{
+		closedir(dirName);
+		return(1);
+	}
+
+	return(0);
+}
+
+void call_creation(int argc, char *argv[], bool verbose, bool parents)
+{
+	/*
+	 * Only one dir in current dir
+	 * Only one dir in explicitly directed dir
+	 * Many dirs in current dir
+	 * Many dirs in explicitly directed dir
+	 * With options or not
+	 */
+
+	for(int i = argc - 1; i != 0; --i)
+	{
+		if(check_if_existing_path(argv[i]))
+			; // existing directory
+		else
+			; // creating directory
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	char c;
@@ -22,12 +53,7 @@ int main(int argc, char *argv[])
 				verbose = true;
 				break;
 			case 'p':
-				if(argc > 2
-				   && strcmp(argv[argc - 2], "-v")
-				   && strcmp(argv[argc - 2], "-p"))
-					parent_dirs(argv[argc - 2], argv[argc - 1], verbose, parents);
-				else
-					parent_dirs("pwd", argv[argc - 1], verbose, parents);
+				parents = true;
 				break;
 			case '?':
 				my_error("Wrong argument, error");
@@ -37,13 +63,15 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	call_creation(argc, argv, verbose, parents);
+/*
 	if(argc > 2
 	   && strcmp(argv[argc - 2], "-v")
 	   && strcmp(argv[argc - 2], "-p"))
 		create_dir(argv[argc - 2], argv[argc - 1], verbose, parents);
 	else
 		create_dir("pwd", argv[argc - 1], verbose, parents);
-
+*/
 	exit(EXIT_SUCCESS);
 }
 
@@ -52,8 +80,6 @@ void parent_dirs(char *source_dir, char *names, bool verbose, bool parents)
 	int words_count = 0;
 	char dir_names[10][50], directory[DIR_NAME];
 
-	parents = true;
-	
 	for(int l = 0, i = names[l], x = 0;
 		(char)i != '\0';
 		i = names[++l])
@@ -88,7 +114,7 @@ void parent_dirs(char *source_dir, char *names, bool verbose, bool parents)
 	exit(EXIT_SUCCESS);
 }
 
-int create_dir(char *source_dir, char *name_dir, bool verbose, bool parents)
+void create_dir(char *source_dir, char *name_dir, bool verbose, bool parents)
 {
 	char directory[DIR_NAME], total_path[DIR_NAME];
 
