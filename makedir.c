@@ -4,6 +4,8 @@
 
 #include "include/inc.h"
 
+typedef unsigned char uchar_t;
+
 bool verbose = false, parents = false;
 
 int main(int argc, char *argv[])
@@ -26,7 +28,7 @@ int main(int argc, char *argv[])
 				parents = true;
 				break;
 			case '?':
-				system_error("Wrong argument, error");
+				user_error("Wrong argument: %c", c);
 				break;
 			default:
 				break;
@@ -40,104 +42,90 @@ int main(int argc, char *argv[])
 
 void call_creation(int argc, char *argv[])
 {
-	if(check_if_existing_path(argv[argc - 1]))
-		user_error("You do not want create %s", argv[argc - 1]);
-
 	for(int i = argc - 1; i != 0; --i)
 	{
-		if(!strcmp(argv[i], "-p") || !strcmp(argv[i], "-v"))
+		if(argv[i][0] ==  '-')
 			break;
-
-		if(check_if_existing_path(argv[i]))
-			continue;
 		else
 		{
 			if(check_if_slash(argv[i]))
 			{
-				if(parents == true)
-				{
-					if(check_if_existing_path(argv[i - 1]))
-						create_parent_dir(argv[i - 1], argv[i]);
-					else
-						create_parent_dir("pwd", argv[i]);
-				}
+				if(check_if_existing_path(argv[i]))
+					create_dir(argv[i]);
+				else if(parents == true)
+						create_parent_dir(argv[i]);
 				else
 					user_error("You did not specify '-p' option to create %s", argv[i]);
 			}
 			else
-			{
-				if(check_if_existing_path(argv[i - 1]))
-					create_dir(argv[i - 1], argv[i]);
-				else
-					create_dir("pwd", argv[i]);
-			}
+				create_dir(argv[i]);
 		}
 	}
 
 	exit(EXIT_SUCCESS);
 }
 
-void create_parent_dir(const char *source_dir, const char *names)
+void create_parent_dir(const char *path_names)
 {
-	int words_count = 0;
-	char dir_names[10][50], directory[DIR_NAME];
+	int count_of_names = 0;
+	char name[256] = {0};
+	char **names = NULL, **temp_names = NULL;
+	char *path = NULL, *temp_path = NULL;
+	size_t length = strlen(path_names) + 1;
 
-	for(int l = 0, i = names[l], x = 0;
-		(char)i != '\0';
-		i = names[++l])
+	for(uchar_t l = 0, i = path_names[l], x = 0;
+		l < length; i = path_names[++l])
 	{
-		if(i == '/')
+		if(l == length)
+			i = 0;
+		else
+			name[x] = i;
+
+		if(i == '/' || !i)
 		{
-			dir_names[words_count][x] = '\0';
+			name[x + 1] = '\0';
+
+			temp_names = xrealloc(names, sizeof *names * (count_of_names + 1));
+			if(temp_names)
+				names = temp_names;
+			else
+				system_error("xrealloc temp_names error");
+
+			names[count_of_names] = xmalloc(sizeof *names * (strlen(name) + 1));
+
+			strcpy(names[count_of_names], name);
+
 			x = 0;
-			++words_count;
-			continue;
+			++count_of_names;
+			memset(name, 0, sizeof name);
 		}
-
-		dir_names[words_count][x++] = i;
+		else
+			++x;
 	}
-	dir_names[words_count][strlen(dir_names[words_count])] = '\0';
-
-	if(!strcmp(source_dir, "pwd"))
+	
+	for(int i = 0; i < count_of_names; ++i)
 	{
-		if(!getcwd(directory, sizeof(directory)))
-			system_error("getcwd error");
+		temp_path = xrealloc(path, sizeof *path * (strlen(names[i]) + 1));
+		if(temp_path)
+			path = temp_path;
+		else
+			system_error("xrealloc temp_path error");
+		path = strcat(path, names[i]);
+		create_dir(path);
 	}
-	else
-		strncpy(directory, source_dir, sizeof(directory));
 
-	for(int i = 0; i <= words_count; ++i)
-	{
-		create_dir(directory, dir_names[i]);
-		strncat(directory, "/", sizeof(directory) - strlen(directory));
-		strncat(directory, dir_names[i], sizeof(directory) - strlen(directory));
-	}
+	for(int i = 0; i < count_of_names; ++i)
+		free(names[i]);
+	free(path);
 }
 
-void create_dir(const char *source_dir, const char *name_dir)
+void create_dir(const char *path_name)
 {
-	char directory[DIR_NAME], total_path[DIR_NAME];
-
-	if(!strcmp(source_dir, "pwd"))
-	{
-		if(!getcwd(directory, sizeof(directory)))
-			system_error("getcwd error");
-	}
-	else
-		strncpy(directory, source_dir, sizeof(directory));
-
-	strncat(directory, "/", sizeof(directory) - strlen(directory));
-	strncat(directory, name_dir, sizeof(directory) - strlen(directory));
-	memset(total_path, 0, sizeof(total_path));
-	strncat(total_path, directory, sizeof(total_path));
-
-	if( (mkdir(total_path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) < 0)
+	if( (mkdir(path_name, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) < 0)
 		system_error("mkdir error");
 
-	if(verbose && strcmp(source_dir, "pwd"))
-		printf("makedir: created directory \"%s\" in \"%s\"\n", name_dir, source_dir);
-	else if(verbose)
-		printf("makedir: created directory \"%s\"\n", name_dir);
+	if(verbose)
+		printf("makedir: created directory \"%s\"\n", path_name);
 }
 
 /*
@@ -162,9 +150,35 @@ int check_if_slash(const char *string)
 	return(0);
 }
 
-int check_if_existing_path(const char *string)
+int check_if_existing_path(const char *str)
 {
-	DIR *dirName = opendir(string);
+	char *path = NULL;
+	size_t slash = 0;
+
+	for(int i = 0; i <= strlen(str); ++i)
+		if(str[i] == '/')
+			++slash;
+
+	if(slash)
+	{
+		for(uchar_t l = 0, i = str[l], x = 0; x != slash; i = str[++l])
+		{
+			path = xrealloc(path, sizeof *path * (l + 1));
+			path[l] = i;
+
+			if(str[l] == '/')
+				++x;
+		}
+		path = xrealloc(path, sizeof *path * (strlen(str) + 1));
+		path[strlen(str)] = '\0';
+	}
+	else
+	{
+		path = xmalloc(strlen(str) + 1);
+		strcpy(path, str);
+	}
+	
+	DIR *dirName = opendir(path);
 	if(dirName)
 	{
 		closedir(dirName);
@@ -187,4 +201,20 @@ void system_error(const char *e)
 {
 	perror(e);
 	exit(EXIT_FAILURE);
+}
+
+void * xrealloc(void *ptr, size_t bytes_number)
+{
+	ptr = realloc(ptr, bytes_number);
+	if(!ptr)
+		system_error("realloc error");
+	return ptr;
+}
+
+void * xmalloc(size_t bytes_number)
+{
+	void *ptr = malloc(bytes_number);
+	if(!ptr)
+		system_error("malloc error");
+	return ptr;
 }
